@@ -1,6 +1,6 @@
 # Kw_Json_Lora_CivitAIDownloader
 
-This tool allows you to download models from CivitAI based on a JSON configuration that defines LORA and checkpoint models. It uses token-based authentication to download files from specified URLs and saves them to specified directories. based on CivitAIDownloader
+The **Kw_Json_Lora_CivitAIDownloader** is a powerful tool that simplifies downloading large numbers of models from CivitAI, especially useful for managing extensive sets of LORA and checkpoint models. This tool uses a JSON configuration to define models for download, enabling you to specify LORA and checkpoint models in bulk and save them to designated directories. With token-based authentication, the downloader ensures secure access and automates the process, making it efficient for users handling large model libraries.
 
 ## Features
 - **Directory Selection**: Choose directories for saving LORA and checkpoint models.
@@ -18,7 +18,7 @@ Set Up Directories: The script will automatically navigate to the models directo
 
 Prepare JSON Input (Example Below): Configure the models to download by preparing a JSON structure. This JSON includes the lora and checkpoint arrays with name and modelVersionId fields.
 
-Set Token and Model URL/ID: For secure download, use your CivitAI token and provide either a full_url or model_id. If a full URL is provided, it will override model_id.
+Set Token and Model URL/ID: For secure download, use your CivitAI token.
 
 JSON Configuration Example
 
