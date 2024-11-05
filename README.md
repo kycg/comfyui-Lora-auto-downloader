@@ -1,6 +1,6 @@
 # Kw_Json_Lora_CivitAIDownloader
 
-The **Kw_Json_Lora_CivitAIDownloader** is a powerful tool that simplifies downloading large numbers of models from CivitAI, especially useful for managing extensive sets of LORA and checkpoint models. This tool uses a JSON configuration to define models for download, enabling you to specify LORA and checkpoint models in bulk and save them to designated directories. With token-based authentication, the downloader ensures secure access and automates the process, making it efficient for users handling large model libraries.
+The **Kw_Json_Lora_CivitAIDownloader** is a powerful tool that simplifies downloading large numbers of models from CivitAI, especially useful for managing extensive sets of LORA and checkpoint models. This tool uses a JSON configuration to define models for download, enabling you to specify LORA and checkpoint models in bulk and save them to designated directories. With token-based authentication, the downloader ensures secure access and automates the process, making it efficient for users handling large model libraries. Based on CivitAIDownloader 
 
 ## Features
 - **Directory Selection**: Choose directories for saving LORA and checkpoint models.
