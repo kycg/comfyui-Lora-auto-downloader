@@ -18,8 +18,8 @@ class Kw_JsonLoraLoader:
             },
             "optional": {
                 "Load_Local_Checkpoint": ("BOOLEAN", {"default": True}),
-                "model": ("MODEL",),
-                "clip": ("CLIP",),
+                "Local_model": ("MODEL",),
+                "Local_clip": ("CLIP",),
             },
             "hidden": {},
         }
@@ -28,9 +28,11 @@ class Kw_JsonLoraLoader:
     RETURN_NAMES = ("MODEL", "CLIP", "Positive", "Negative")
     FUNCTION = "load_loras"
 
-    def load_loras(self, lora_config, Load_Local_Checkpoint=True, model=None, clip=None, **kwargs):
+    def load_loras(self, lora_config, Load_Local_Checkpoint=True, Local_model=None, Local_clip=None, **kwargs):
         """Loads LoRA modules from JSON configuration and applies them."""
         
+        model = Local_model
+        clip =Local_clip 
         Positive = ""
         Negative = ""
 
