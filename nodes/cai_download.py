@@ -160,10 +160,11 @@ class Kw_Json_Lora_CivitAIDownloader:
             for checkpoint_entry in Json_Lora["checkpoint"]:
                 checkpoint_name = checkpoint_entry["name"]
                 checkpoint_model_id = checkpoint_entry["modelVersionId"]
+                checkpoint_filename = checkpoint_name + '_' + checkpoint_model_id + ".safetensors"
                 print(f"\tDownloading Checkpoint: {checkpoint_name} (Model ID: {checkpoint_model_id})")
                 
                 if not ignore_down_checkpoint:
-                    download_cai(checkpoint_name,checkpoint_model_id, token_id, save_dir_checkpoint, full_url)
+                    download_cai(checkpoint_filename,checkpoint_model_id, token_id, save_dir_checkpoint, full_url)
 
         checkpoint_name_return = Json_Lora["checkpoint"][0]["name"] if Json_Lora["checkpoint"] else None
         positive = Json_Lora['positive']
