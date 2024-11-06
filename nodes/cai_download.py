@@ -104,6 +104,7 @@ def download_cai(NAME, MODEL_ID, TOKEN, LOCAL_PATH, FULL_URL):
 
 class Kw_Json_Lora_CivitAIDownloader:     
     @classmethod
+  
     def INPUT_TYPES(cls):
         return {
             "required": {       
@@ -113,14 +114,14 @@ class Kw_Json_Lora_CivitAIDownloader:
             "optional" : {
                 "Json_Lora":("STRING",{"multiline": True}),
                 "ignore": ("BOOLEAN", { "default": False}),
-                "model_id":  ("STRING", {"multiline": False, "default": "360292"}),
+                "model_id":  ("STRING", {"multiline": False, "default": ""}),
                 "token_id": ("STRING", {"multiline": False, "default": ""}),
                 "full_url": ("STRING", {"multiline": False, "default": ""})
             }
         }
         
-    RETURN_TYPES = ()
-    #RETURN_NAMES = ()
+    RETURN_TYPES = ("STRING","STRING","STRING","STRING")
+    RETURN_NAMES = ('Json Lora','checkpoint','Positive','Nagative')
     FUNCTION     = "download"
     OUTPUT_NODE  = True
     CATEGORY     = "loaders"
@@ -132,7 +133,7 @@ class Kw_Json_Lora_CivitAIDownloader:
         print(f"\tSaving to: {save_dir_lora}")
         print(f"\tSaving to: {save_dir_checkpoint}")
  
-
+        Json_Lora_string = Json_Lora
         # Parse Json_Lora if it's a string
         try:
             Json_Lora = json.loads(Json_Lora)
@@ -161,4 +162,7 @@ class Kw_Json_Lora_CivitAIDownloader:
                 if not ignore:
                     download_cai(checkpoint_name,checkpoint_model_id, token_id, save_dir_checkpoint, full_url)
 
-        return {}
+        checkpoint_name_return = Json_Lora["checkpoint"][0]["name"] if Json_Lora["checkpoint"] else None
+        positive = Json_Lora['positive']
+        negative= Json_Lora['negative']
+        return Json_Lora_string,checkpoint_name_return,positive,negative
