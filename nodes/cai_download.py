@@ -39,7 +39,8 @@ def download_file_with_token(fname, url, params=None, save_path='.'):
             if not filename:
                 filename = url.split("/")[-1]
 
-            filename = fname + '_' + filename
+            #filename = fname + '_' + filename
+            filename = fname
             
             # Prepare the complete file path
             file_path = os.path.join(save_path, filename)
@@ -114,6 +115,7 @@ class Kw_Json_Lora_CivitAIDownloader:
             "optional" : {
                 "Json_Lora":("STRING",{"multiline": True}),
                 "ignore": ("BOOLEAN", { "default": False}),
+                "ignore_down_checkpoint": ("BOOLEAN", { "default": False}),
                 "model_id":  ("STRING", {"multiline": False, "default": ""}),
                 "token_id": ("STRING", {"multiline": False, "default": ""}),
                 "full_url": ("STRING", {"multiline": False, "default": ""})
@@ -126,12 +128,12 @@ class Kw_Json_Lora_CivitAIDownloader:
     OUTPUT_NODE  = True
     CATEGORY     = "loaders"
 
-    def download(self, model_id, token_id, save_dir_lora, ignore, full_url, Json_Lora,save_dir_checkpoint):  
+    def download(self, model_id, token_id, save_dir_lora, ignore,ignore_down_checkpoint, full_url, Json_Lora,save_dir_checkpoint):  
         print("Downloading")
-        print(f"\tToken: {token_id}")
-        print(f"\tFull URL: {full_url}")
-        print(f"\tSaving to: {save_dir_lora}")
-        print(f"\tSaving to: {save_dir_checkpoint}")
+        #print(f"\tToken: {token_id}")
+        #print(f"\tFull URL: {full_url}")
+        #print(f"\tSaving to: {save_dir_lora}")
+        #print(f"\tSaving to: {save_dir_checkpoint}")
  
         Json_Lora_string = Json_Lora
         # Parse Json_Lora if it's a string
@@ -147,10 +149,11 @@ class Kw_Json_Lora_CivitAIDownloader:
             for lora_entry in Json_Lora["lora"]:
                 lora_name = lora_entry["name"]
                 lora_model_id = lora_entry["modelVersionId"]
+                lora_filename = lora_name + '_' + lora_model_id + ".safetensors"
                 print(f"\tDownloading LORA: {lora_name} (Model ID: {lora_model_id})")
                 
                 if not ignore:
-                    download_cai(lora_name,lora_model_id, token_id, save_dir_lora, full_url)
+                    download_cai(lora_filename,lora_model_id, token_id, save_dir_lora, full_url)
                     
         # Download checkpoint files
         if "checkpoint" in Json_Lora:
@@ -159,7 +162,7 @@ class Kw_Json_Lora_CivitAIDownloader:
                 checkpoint_model_id = checkpoint_entry["modelVersionId"]
                 print(f"\tDownloading Checkpoint: {checkpoint_name} (Model ID: {checkpoint_model_id})")
                 
-                if not ignore:
+                if not ignore_down_checkpoint:
                     download_cai(checkpoint_name,checkpoint_model_id, token_id, save_dir_checkpoint, full_url)
 
         checkpoint_name_return = Json_Lora["checkpoint"][0]["name"] if Json_Lora["checkpoint"] else None
