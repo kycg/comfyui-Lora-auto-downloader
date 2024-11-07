@@ -168,6 +168,7 @@ class Kw_JsonLoraLoader:
                 if strength > 0:
                     loaded_lora = lora_filename  # Since get_lora_by_filename returns the path
                     model, clip = LoraLoader().load_lora(model, clip, loaded_lora, strength, strength)
+                    print(f"Successfully loaded LoRA '{lora_filename_base}'")
                 else:
                     print(f"Skipping LoRA '{lora_filename_base}' due to zero strength.")
         else:
