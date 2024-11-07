@@ -68,7 +68,7 @@ def log_node(node_name, message, msg_color='RESET'):
 
 def _log_node(color, node_name, message, msg_color='RESET'):
   """Logs for a node message."""
-  log(message, color=color, prefix=node_name.replace(" (rgthree)", ""), msg_color=msg_color)
+  log(message, color=color, prefix=node_name.replace(" (kwcg)", ""), msg_color=msg_color)
 
 
 def log(message, color=None, msg_color=None, prefix=None):
@@ -76,6 +76,6 @@ def log(message, color=None, msg_color=None, prefix=None):
   color = COLORS[color] if color is not None and color in COLORS else COLORS["BRIGHT_GREEN"]
   msg_color = COLORS[msg_color] if msg_color is not None and msg_color in COLORS else ''
   prefix = f'[{prefix}]' if prefix is not None else ''
-  msg = f'{color}[rgthree]{prefix}'
+  msg = f'{color}[kwcg]{prefix}'
   msg += f'{msg_color} {message}{COLORS["RESET"]}'
   print(msg)
