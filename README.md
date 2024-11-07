@@ -18,7 +18,7 @@ Set Up Directories: The script will automatically navigate to the models directo
 
 Prepare JSON Input (Example Below): Configure the models to download by preparing a JSON structure. This JSON includes the lora and checkpoint arrays with name and modelVersionId fields.
 
-Set Token and Model URL/ID: For secure download, use your CivitAI token and provide either a full_url or model_id. If a full URL is provided, it will override model_id.
+Set Token and Model ID: For secure download, use your CivitAI token and model_id.
 
 JSON Configuration Example
 

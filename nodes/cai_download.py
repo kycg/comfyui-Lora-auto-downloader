@@ -111,6 +111,7 @@ class Kw_Json_Lora_CivitAIDownloader:
             "required": {       
                 "save_dir_lora": (get_model_dirs(),),
                 "save_dir_checkpoint": (get_model_dirs(),),
+                "save_dir_embedding": (get_model_dirs(),),
             },
             "optional" : {
                 "Json_Lora":("STRING",{"multiline": True}),
@@ -128,7 +129,7 @@ class Kw_Json_Lora_CivitAIDownloader:
     OUTPUT_NODE  = True
     CATEGORY     = "loaders"
 
-    def download(self, model_id, token_id, save_dir_lora, ignore,ignore_down_checkpoint, full_url, Json_Lora,save_dir_checkpoint):  
+    def download(self, model_id, token_id, save_dir_lora, ignore,ignore_down_checkpoint, full_url, Json_Lora,save_dir_checkpoint,save_dir_embedding):  
         print("Downloading")
         #print(f"\tToken: {token_id}")
         #print(f"\tFull URL: {full_url}")
@@ -154,6 +155,16 @@ class Kw_Json_Lora_CivitAIDownloader:
                 
                 if not ignore:
                     download_cai(lora_filename,lora_model_id, token_id, save_dir_lora, full_url)
+
+        if "embedding" in Json_Lora:
+            for embedding_entry in Json_Lora["embedding"]:
+                embedding_name = embedding_entry["name"]
+                embedding_model_id = embedding_entry["modelVersionId"]
+                embedding_filename = embedding_name + '_' + embedding_model_id + ".safetensors"
+                print(f"\tDownloading LORA: {embedding_name} (Model ID: {embedding_model_id})")
+                
+                if not ignore:
+                    download_cai(embedding_filename,embedding_model_id, token_id, save_dir_embedding, full_url)
                     
         # Download checkpoint files
         if "checkpoint" in Json_Lora:
