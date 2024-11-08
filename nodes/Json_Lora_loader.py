@@ -1,7 +1,7 @@
 import json
 from nodes import LoraLoader
 from .utils.power_prompt_utils import get_lora_by_filename, get_checkpoint_by_filename
-from .utils.log import log_node_info, log_node_warn
+from .utils.log import log_node_info, log_node_warn,log_node
 import folder_paths
 import comfy.sd
 import os
@@ -59,7 +59,7 @@ class Kw_JsonLoraLoader:
                         # Construct the checkpoint filename
                         ckpt_filename_base = f"{ckpt_name}_{ckpt_num}"
                         # Use the new function to get the checkpoint path
-                        ckpt_filename = get_checkpoint_by_filename(ckpt_filename_base, log_node=self.NAME)
+                        ckpt_filename = get_checkpoint_by_filename(ckpt_filename_base, log_node='Kw_JsonLoraLoader')
                         if ckpt_filename is None:
                             raise FileNotFoundError(f"Checkpoint file '{ckpt_filename_base}' not found.")
                         ckpt_path = folder_paths.get_full_path("checkpoints", ckpt_filename)
@@ -94,7 +94,7 @@ class Kw_JsonLoraLoader:
                 lora_filename_base = f"{name}_{model_version_id}"
 
                 # Use the existing function to get the lora filename
-                lora_filename = get_lora_by_filename(lora_filename_base, log_node=self.NAME)
+                lora_filename = get_lora_by_filename(lora_filename_base, log_node='Kw_JsonLoraLoader')
                 if lora_filename is None:
                     print(f"LoRA file '{lora_filename_base}' not found.")
                     continue
