@@ -13,7 +13,7 @@ class Kw_JsonLoraLoader:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "lora_config": ("str",),  # User-provided JSON configuration for LoRA modules
+                "lora_config": ("STRING", {"forceInput": True}),  # User-provided JSON configuration for LoRA modules
             },
             "optional": {
                 "Load_Local_Checkpoint": ("BOOLEAN", {"default": True}),
@@ -23,7 +23,7 @@ class Kw_JsonLoraLoader:
             "hidden": {},
         }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "str", "str")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "Positive", "Negative")
     FUNCTION = "load_loras"
     OUTPUT_NODE  = True
