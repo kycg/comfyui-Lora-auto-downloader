@@ -77,7 +77,8 @@ class Kw_JsonLoraLoader:
 
     NAME = "Kw_JsonLoraLoader"
     CATEGORY = "loaders"
-
+    class_type = "lora_loader"  # 添加此行
+    
     @classmethod
     def INPUT_TYPES(cls):
         return {
