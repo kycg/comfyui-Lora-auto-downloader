@@ -1,0 +1,14 @@
+[project]
+name = "comfyui-Lora-auto-downloader"
+description = "This tool allows you to download models from CivitAI based on a JSON configuration."
+version = "0.21"
+license = { file = "LICENSE" }
+dependencies = ["requests", "os", "json", "re"]
+
+[project.urls]
+Repository = "https://github.com/kycg/comfyui-Lora-auto-downloader"
+
+[tool.comfy]
+PublisherId = "kwcgui"
+DisplayName = "comfyui-Lora-auto-downloader"
+Icon = ""
