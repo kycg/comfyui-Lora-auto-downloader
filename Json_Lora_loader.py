@@ -6,11 +6,10 @@ import folder_paths
 import comfy.sd
 import os
 
-
+    #A node to load multiple LoRA modules from a JSON configuration.
 class Kw_JsonLoraLoader:
-    """A node to load multiple LoRA modules from a JSON configuration."""
-
     @classmethod
+    
     def INPUT_TYPES(cls):
         return {
             "required": {
@@ -27,6 +26,7 @@ class Kw_JsonLoraLoader:
     RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "Positive", "Negative")
     FUNCTION = "load_loras"
+    OUTPUT_NODE  = True
     CATEGORY = "loaders"
     
     
