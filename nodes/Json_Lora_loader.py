@@ -10,10 +10,6 @@ import os
 class Kw_JsonLoraLoader:
     """A node to load multiple LoRA modules from a JSON configuration."""
 
-    NAME = "Kw_JsonLoraLoader"
-    CATEGORY = "loaders"
-
-    
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -31,7 +27,10 @@ class Kw_JsonLoraLoader:
     RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "Positive", "Negative")
     FUNCTION = "load_loras"
-
+    CATEGORY = "loaders"
+    
+    
+    
     def load_loras(self, lora_config, Load_Local_Checkpoint=True, Local_model=None, Local_clip=None, **kwargs):
         """Loads LoRA modules from JSON configuration and applies them."""
 
