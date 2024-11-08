@@ -1,83 +1,18 @@
 import json
 from nodes import LoraLoader
-from .json_lora_loader.power_prompt_utils import get_lora_by_filename
+from .json_lora_loader.power_prompt_utils import get_lora_by_filename, get_checkpoint_by_filename
 from .json_lora_loader.log import log_node_info, log_node_warn
 import folder_paths
 import comfy.sd
 import os
 
-def get_checkpoint_by_filename(file_path, checkpoint_paths=None, log_node=None):
-    """Returns a checkpoint file path by filename, looking for exact paths and then fuzzier matching."""
-    checkpoint_paths = checkpoint_paths if checkpoint_paths is not None else folder_paths.get_filename_list('checkpoints')
-
-    if file_path in checkpoint_paths:
-        return file_path
-
-    # Remove extensions for comparison
-    checkpoint_paths_no_ext = [os.path.splitext(x)[0] for x in checkpoint_paths]
-
-    # Exact match without extension
-    if file_path in checkpoint_paths_no_ext:
-        found = checkpoint_paths[checkpoint_paths_no_ext.index(file_path)]
-        return found
-
-    # Force input without extension and compare
-    file_path_no_ext = os.path.splitext(file_path)[0]
-    if file_path_no_ext in checkpoint_paths_no_ext:
-        found = checkpoint_paths[checkpoint_paths_no_ext.index(file_path_no_ext)]
-        return found
-
-    # Compare basenames
-    checkpoint_basenames = [os.path.basename(x) for x in checkpoint_paths]
-    if file_path in checkpoint_basenames:
-        found = checkpoint_paths[checkpoint_basenames.index(file_path)]
-        if log_node is not None:
-            log_node_info(log_node, f"Matched checkpoint input '{file_path}' to '{found}'.")
-        return found
-
-    # Force input to basename and compare
-    file_basename = os.path.basename(file_path)
-    if file_basename in checkpoint_basenames:
-        found = checkpoint_paths[checkpoint_basenames.index(file_basename)]
-        if log_node is not None:
-            log_node_info(log_node, f"Matched checkpoint input '{file_path}' to '{found}'.")
-        return found
-
-    # Compare basenames without extensions
-    checkpoint_basenames_no_ext = [os.path.splitext(os.path.basename(x))[0] for x in checkpoint_paths]
-    if file_path in checkpoint_basenames_no_ext:
-        found = checkpoint_paths[checkpoint_basenames_no_ext.index(file_path)]
-        if log_node is not None:
-            log_node_info(log_node, f"Matched checkpoint input '{file_path}' to '{found}'.")
-        return found
-
-    # Force input to basename without extension and compare
-    file_basename_no_ext = os.path.splitext(os.path.basename(file_path))[0]
-    if file_basename_no_ext in checkpoint_basenames_no_ext:
-        found = checkpoint_paths[checkpoint_basenames_no_ext.index(file_basename_no_ext)]
-        if log_node is not None:
-            log_node_info(log_node, f"Matched checkpoint input '{file_path}' to '{found}'.")
-        return found
-
-    # Fuzzy matching
-    for index, checkpoint_path in enumerate(checkpoint_paths):
-        if file_path in checkpoint_path:
-            found = checkpoint_paths[index]
-            if log_node is not None:
-                log_node_warn(log_node, f"Fuzzy-matched checkpoint input '{file_path}' to '{found}'.")
-            return found
-
-    if log_node is not None:
-        log_node_warn(log_node, f"Checkpoint '{file_path}' not found, skipping.")
-
-    return None
 
 class Kw_JsonLoraLoader:
     """A node to load multiple LoRA modules from a JSON configuration."""
 
     NAME = "Kw_JsonLoraLoader"
     CATEGORY = "loaders"
-    class_type = "Kw_JsonLoraLoader"  # 添加此行
+
     
     @classmethod
     def INPUT_TYPES(cls):

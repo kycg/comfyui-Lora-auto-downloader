@@ -8,7 +8,7 @@ NODE_CLASS_MAPPINGS = {
 }
 NODE_DISPLAY_NAME_MAPPINGS = { 
     "Kw_Json_Lora_CivitAIDownloader" : "Kw_Json_Lora_CivitAIDownloader",
-    "Kw_JsonLoraLoader" : "Kw Json Lora Loader",
+    "Kw_JsonLoraLoader" : "Kw_JsonLoraLoader",
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
