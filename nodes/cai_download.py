@@ -9,8 +9,6 @@
 # - R2 元数据 ASCII 化（避免 Non-ascii metadata 报错）
 # - 兼容缺失 requests/boto3 的自动安装（可关闭）
 # - 兼容旧代码输入；新增 R2 输入项为可选
-# - 新增：R2 上传/下载进度日志（每 10MB 一次）
-# - 新增：本地命中但文件名前缀与 JSON 不一致时自动重命名为 JSON 名称
 # =========================================================
 
 import importlib
@@ -81,76 +79,13 @@ def _ensure_dir(path: str):
 def _normpath(p: str) -> str:
     return os.path.normpath(p)
 
-def _safe_filename_component(name: str) -> str:
-    """
-    将 JSON 中的 name 转为安全的文件名片段（跨 Win/Linux）
-    """
-    name = name.strip()
-    # 替换 Windows 非法字符: \ / : * ? " < > | 和控制字符
-    return re.sub(r'[\\/:*?"<>|\r\n\t]+', '_', name)[:240]  # 避免极端超长
-
-def _same_path(a: str, b: str) -> bool:
-    try:
-        return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
-    except Exception:
-        return a == b
-
-def _safe_rename(src: str, dst: str) -> str:
-    """
-    尝试把 src 重命名到 dst。若 dst 已存在则保留 dst，删除或忽略 src。
-    返回最终可用路径（优先 dst）。
-    """
-    if _same_path(src, dst):
-        return dst
-    # 目标已存在：优先使用目标，清理源（若可能）
-    if os.path.exists(dst):
-        try:
-            # 如果两个文件完全相同大小，则删除旧别名；否则保留以防误删
-            if os.path.getsize(src) == os.path.getsize(dst):
-                os.remove(src)
-                logger.info(f"[resolve] Removed alias after conflict: {src}")
-        except Exception:
-            pass
-        return dst
-    # 尝试就地重命名
-    try:
-        os.replace(src, dst)
-        logger.info(f"[resolve] Renamed local file to match JSON name: {os.path.basename(dst)}")
-        return dst
-    except Exception as e:
-        logger.warning(f"[resolve] Rename failed ({e}); keep original: {src}")
-        return src
-
 # =========================================================
-# R2 Client (S3 compatible) + Progress
+# R2 Client (S3 compatible)
+# - 相对键：modelVersionId
+# - list 去掉全局前缀
+# - ASCII 元数据
 # =========================================================
 class R2Client:
-    PROGRESS_STEP = 10 * 1024 * 1024  # 10MB
-
-    class _Progress:
-        def __init__(self, total: Optional[int], label: str, step_bytes: int, prefix: str = "[r2]"):
-            self.total = total or 0
-            self.label = label
-            self.step = max(1, step_bytes)
-            self.seen = 0
-            self.next = self.step
-            self.prefix = prefix
-
-        def __call__(self, bytes_amount):
-            self.seen += int(bytes_amount or 0)
-            if self.seen >= self.next:
-                if self.total > 0:
-                    pct = self.seen / self.total * 100.0
-                    logger.info(f"{self.prefix} {self.label} progress: {pct:.1f}% ({self.seen}/{self.total} bytes)")
-                else:
-                    mb = self.seen / (1024 * 1024)
-                    logger.info(f"{self.prefix} {self.label} progress: {mb:.1f} MB")
-                self.next += self.step
-
-        def done(self):
-            if self.total > 0 and self.seen < self.total:
-                logger.info(f"{self.prefix} {self.label} progress: 100.0% ({self.total}/{self.total} bytes)")
-
     def __init__(
         self,
         enabled: bool,
@@ -172,7 +107,6 @@ class R2Client:
         self.auto_install = auto_install
         self._boto3 = None
         self._client = None
-        self._TransferConfig = None
         if self.enabled:
             self._init_client()
 
@@ -183,9 +117,8 @@ class R2Client:
             return
         import boto3  # type: ignore
         from botocore.config import Config  # type: ignore
-        from boto3.s3.transfer import TransferConfig  # type: ignore
         self._boto3 = boto3
-        self._TransferConfig = TransferConfig
+        # Cloudflare R2 支持 virtual-hosted 风格
         cfg = Config(s3={"addressing_style": "virtual"})
         try:
             session = boto3.session.Session()
@@ -251,37 +184,14 @@ class R2Client:
             return False
 
     def download(self, relative_key: str, local_path: str) -> bool:
-        """
-        使用 boto3 download_file + Callback 输出每 10MB 的下载进度。
-        """
         if not self.enabled:
             return False
         key = self._full_key(relative_key)
         _ensure_dir(os.path.dirname(local_path))
-        total = None
         try:
-            # 获取对象大小用于计算百分比
-            head = self._client.head_object(Bucket=self.bucket, Key=key)
-            total = int(head.get("ContentLength") or 0) or None
-        except Exception:
-            pass
-        try:
-            from boto3.s3.transfer import TransferConfig  # type: ignore
-            prog = self._Progress(total, "Download", self.PROGRESS_STEP)
             logger.info(f"[r2] download s3://{self.bucket}/{key} -> {local_path}")
-            self._client.download_file(
-                Bucket=self.bucket,
-                Key=key,
-                Filename=local_path,
-                Callback=prog,
-                Config=TransferConfig(
-                    multipart_threshold=8 * 1024 * 1024,
-                    multipart_chunksize=8 * 1024 * 1024,
-                    max_concurrency=4,
-                    use_threads=True,
-                ),
-            )
-            prog.done()
+            with open(local_path, "wb") as f:
+                self._client.download_fileobj(self.bucket, key, f)
             return True
         except Exception as e:
             logger.error(f"[r2] download failed: {relative_key} -> {e}")
@@ -302,36 +212,17 @@ class R2Client:
         return out
 
     def upload(self, relative_key: str, local_path: str, metadata: Optional[Dict[str, str]] = None) -> bool:
-        """
-        使用 boto3 upload_file + Callback 输出每 10MB 的上传进度。
-        """
         if not self.enabled:
             return False
         key = self._full_key(relative_key)
         meta = self._ascii_meta(metadata)
-        total = None
         try:
-            total = os.path.getsize(local_path)
-        except Exception:
-            pass
-        try:
-            from boto3.s3.transfer import TransferConfig  # type: ignore
-            prog = self._Progress(total, "Upload", self.PROGRESS_STEP)
             logger.info(f"[r2] upload {local_path} -> s3://{self.bucket}/{key} meta={meta}")
-            self._client.upload_file(
-                Filename=local_path,
-                Bucket=self.bucket,
-                Key=key,
-                ExtraArgs={"Metadata": meta} if meta else None,
-                Callback=prog,
-                Config=TransferConfig(
-                    multipart_threshold=8 * 1024 * 1024,
-                    multipart_chunksize=8 * 1024 * 1024,
-                    max_concurrency=4,
-                    use_threads=True,
-                ),
-            )
-            prog.done()
+            with open(local_path, "rb") as f:
+                self._client.upload_fileobj(
+                    f, self.bucket, key,
+                    ExtraArgs={"Metadata": meta} if meta else None
+                )
             logger.info(f"[r2] upload OK: key={relative_key}")
             return True
         except Exception as e:
@@ -370,7 +261,7 @@ def download_file_with_token(fname: str, url: str, params=None, save_path='.', l
             logger.info(f"[net] GET {response.url}")
             total_size = int(response.headers.get('content-length', 0)) or None
             downloaded_size = 0
-            progress_interval = 5 * 1024 * 1024  # 5MB（保持原逻辑）
+            progress_interval = 5 * 1024 * 1024  # 5MB
             next_progress = progress_interval
             with open(file_path, 'wb') as file:
                 for chunk in response.iter_content(chunk_size=1024 * 256):
@@ -436,7 +327,7 @@ def _backfill_to_r2(r2: R2Client, key: str, abspath: str, meta: Dict[str, str], 
         threading.Thread(target=_do, daemon=True).start()
 
 # =========================================================
-# 解析：本地 -> R2 -> Civitai（含本地重命名）
+# 解析：本地 -> R2 -> Civitai
 # =========================================================
 def _choose_path_display(abs_path: str, models_root: str, mode: str) -> str:
     if mode == "absolute":
@@ -465,8 +356,7 @@ def resolve_model_file(
     r2_backfill_retries: int = 1,
 ) -> Tuple[Optional[str], Optional[str], str]:
     models_root = models_root or get_base_dir()
-    safe_name = _safe_filename_component(name or "model")
-    local_fname = f"{safe_name}_{model_version_id}.safetensors"
+    local_fname = f"{name}_{model_version_id}.safetensors"
     local_abs_dir = _normpath(os.path.join(models_root, local_dir))
     local_abs_path = _normpath(os.path.join(local_abs_dir, local_fname))
 
@@ -476,17 +366,9 @@ def resolve_model_file(
     hit = _find_local_by_model_id(local_abs_dir, model_version_id)
     if hit:
         logger.info(f"[resolve] HIT local: {hit}")
-        # 本地命中但文件名前缀与 JSON name 不一致 -> 重命名
-        if not _same_path(hit, local_abs_path):
-            # 仅在同目录下重命名，不跨目录
-            try:
-                _ensure_dir(os.path.dirname(local_abs_path))
-                hit = _safe_rename(hit, local_abs_path)
-            except Exception as e:
-                logger.warning(f"[resolve] Rename exception, keep original: {e}")
         # 本地命中但 R2 缺失 -> 回灌
         if r2.enabled and r2_backfill_on_local_hit and not r2.head(model_version_id):
-            meta = {"name": safe_name, "modelVersionId": model_version_id}
+            meta = {"name": name, "modelVersionId": model_version_id}
             _backfill_to_r2(r2, model_version_id, hit, meta, sync=r2_backfill_sync, retries=r2_backfill_retries)
         chosen = _choose_path_display(hit, models_root, return_mode)
         return hit, chosen, "local"
@@ -509,7 +391,7 @@ def resolve_model_file(
     if ok and abspath:
         logger.info(f"[resolve] CIVITAI -> local OK: {abspath}")
         if r2.enabled:
-            meta = {"name": safe_name, "modelVersionId": model_version_id}
+            meta = {"name": name, "modelVersionId": model_version_id}
             _backfill_to_r2(r2, model_version_id, abspath, meta, sync=r2_backfill_sync, retries=r2_backfill_retries)
         chosen = _choose_path_display(abspath, models_root, return_mode)
         return abspath, chosen, "civitai"
@@ -527,8 +409,6 @@ class Kw_Json_Lora_CivitAIDownloader:
     - 命中后回灌 R2（含本地命中但 R2 缺失）
     - R2：相对键、ASCII 元数据、list 去前缀
     - 兼容旧输入；新增 R2 输入（Access Key/Secret/Endpoint/Bucket/Prefix）
-    - R2 上传/下载带进度日志（10MB 步进）
-    - 本地命中若文件名前缀与 JSON 不一致则自动重命名
     """
 
     @classmethod
@@ -644,39 +524,31 @@ class Kw_Json_Lora_CivitAIDownloader:
         models_root = get_base_dir()
 
         def _process_entry(entry, kind: str, local_dir: str) -> Tuple[Optional[str], Optional[str], str]:
-            raw_name = entry.get("name") or "model"
-            safe_name = _safe_filename_component(raw_name)
+            name = (entry.get("name") or "model").strip()
             mvid = str(entry.get("modelVersionId", "")).strip()
             if not mvid:
-                logger.error(f"[{kind}] Missing modelVersionId for '{raw_name}'. Skip.")
+                logger.error(f"[{kind}] Missing modelVersionId for '{name}'. Skip.")
                 return None, None, "miss"
 
             # 忽略逻辑（兼容旧）
             if ignore and kind in ("lora", "embedding"):
-                logger.info(f"[{kind}] ignore=True -> skip '{raw_name}:{mvid}'")
+                logger.info(f"[{kind}] ignore=True -> skip '{name}:{mvid}'")
                 local_abs_dir = os.path.join(models_root, local_dir)
                 hit = _find_local_by_model_id(local_abs_dir, mvid)
                 if hit:
-                    # 命中但需要改名
-                    expected = os.path.join(local_abs_dir, f"{safe_name}_{mvid}.safetensors")
-                    if not _same_path(hit, expected):
-                        hit = _safe_rename(hit, expected)
                     return hit, _choose_path_display(hit, models_root, return_path_mode), "local"
                 return None, None, "miss"
 
             if ignore_down_checkpoint and kind == "checkpoint":
-                logger.info(f"[{kind}] ignore_down_checkpoint=True -> skip '{raw_name}:{mvid}'")
+                logger.info(f"[{kind}] ignore_down_checkpoint=True -> skip '{name}:{mvid}'")
                 local_abs_dir = os.path.join(models_root, local_dir)
                 hit = _find_local_by_model_id(local_abs_dir, mvid)
                 if hit:
-                    expected = os.path.join(local_abs_dir, f"{safe_name}_{mvid}.safetensors")
-                    if not _same_path(hit, expected):
-                        hit = _safe_rename(hit, expected)
                     return hit, _choose_path_display(hit, models_root, return_path_mode), "local"
                 return None, None, "miss"
 
             abspath, chosen, source = resolve_model_file(
-                name=safe_name,  # 注意：用安全名生成落地文件
+                name=name,
                 model_version_id=mvid,
                 local_dir=local_dir,
                 r2=r2,
